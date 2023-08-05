@@ -127,11 +127,11 @@ end
 ### Filterbank/HDF5 data
 
 function get_h5data(fname, idxs)
-    h5open(h5->h5["data"][idxs...], h5name)
+    h5open(h5->h5["data"][idxs...], fname)
 end
 
 function get_fbdata(fname, idxs)
-    _, fbd = Filterbank.mmap(fbname)
+    _, fbd = Filterbank.mmap(fname)
     data = copy(fbd[idxs...])
     finalize(fbd) # force un-mmap
     data
@@ -165,7 +165,7 @@ function handle_fbdata()
     ifs   = query(:ifs,   ":") |> parse_int_range
     times = query(:times, ":") |> parse_int_range
 
-    idxs = all(==(Colon()), idxs) ?  idxs=() : (chans, ifs, times)
+    idxs = all(==(Colon()), (chans, ifs, times)) ?  () : (chans, ifs, times)
     data = get_data(fname, idxs)
 
     hdrs = Dict(
