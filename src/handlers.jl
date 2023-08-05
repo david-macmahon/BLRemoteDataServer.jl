@@ -66,11 +66,11 @@ function handle_findfiles()
     end |> json
 end
 
-### FBH5 files
+### Filterbank/HDF5 headers
 
-function getfbh5header(fbh5name)
+function get_h5header(fname)
     try
-        h5open(fbh5name) do h5
+        h5open(fname) do h5
             data = h5["data"]
             attrs = attributes(data)
             pairs = [Symbol(k) => attrs[k][] for k in keys(attrs) if k != "DIMENSION_LABELS"]
@@ -87,20 +87,58 @@ function getfbh5header(fbh5name)
             NamedTuple(pairs)
         end
     catch
-        (; hostname=gethostname(), filename=abspath(fhh5name))
+        (; hostname=gethostname(), filename=abspath(fname))
     end
 end
 
-function handle_fbh5files()
+function get_fbheader(fbname)
+    try
+        fbh = open(io->read(io, Filterbank.Header), fbname)
+        # Compute nfpc for Green Bank files as Int32 to match FBH5's nfpc type
+        fbh[:nfpc] = round(Int32, 187.5/64/abs(fbh[:foff]))
+        # Delete redundant fields to match FBH5 headers
+        delete!(fbh, :header_size)
+        delete!(fbh, :sample_size)
+        # Add hostname and filename fields
+        fbh[:hostname] = gethostname()
+        fbh[:filename] = abspath(fbname)
+        NamedTuple(fbh)
+    catch
+        (; hostname=gethostname(), filename=abspath(fbname))
+    end
+end
+
+function get_header(fname)
+    HDF5.ishdf5(fname) ? get_h5header(fname) : get_fbheader(fname)
+end
+
+function handle_fbfiles()
     dirname = query(:dir, nothing)
-    dirname === nothing && error("required parameter (dir) is missing")
-    validate_path(dirname)
-    pattern = Regex(query(:regex, "\\.h5\$"))
+    dirname === nothing && error500("required parameter (dir) is missing")
+    validate_dir(dirname)
+    pattern = Regex(query(:regex, "\\.(fil|h5)\$"))
 
     mapreduce(vcat, walkdir(dirname)) do (dir, _, files)
         matches = filter(s->occursin(pattern, s), files)
-        getfbh5header.(joinpath.(dir, matches))
+        get_header.(joinpath.(dir, matches))
     end |> json
+end
+
+### Filterbank/HDF5 data
+
+function get_h5data(fname, idxs)
+    h5open(h5->h5["data"][idxs...], h5name)
+end
+
+function get_fbdata(fname, idxs)
+    _, fbd = Filterbank.mmap(fbname)
+    data = copy(fbd[idxs...])
+    finalize(fbd) # force un-mmap
+    data
+end
+
+function get_data(fname, idxs)
+    HDF5.ishdf5(fname) ? get_h5data(fname, idxs) : get_fbdata(fname, idxs)
 end
 
 function parse_int_range(s::AbstractString)
@@ -115,64 +153,8 @@ function parse_int_range(s::AbstractString)
     elseif length(parts) == 3
         return parts[1]:parts[2]:parts[3]
     else
-        error("invalid range syntax ($s)")
+        error500("invalid range syntax ($s)")
     end
-end
-
-function handle_fbh5data()
-    h5name = query(:file, nothing)
-    h5name === nothing && error("required parameter (file) is missing")
-    validate_path(h5name)
-    chans = query(:chans, ":") |> parse_int_range
-    ifs   = query(:ifs,   ":") |> parse_int_range
-    times = query(:times, ":") |> parse_int_range
-
-    idxs = (chans, ifs, times)
-    if all(==(Colon()), idxs)
-        idxs=()
-    end
-
-    data = h5open(h5name) do h5
-        h5["data"][idxs...]
-    end
-
-    p = Ptr{UInt8}(pointer(data))
-    hdrs = Dict(
-        "content-type" => "application/octet-stream",
-        "X-dims" => join(size(data), ",")
-    )
-    GC.@preserve data HTTP.Messages.Response(200, hdrs, unsafe_wrap(Array, p, (sizeof(data),)))
-end
-
-### Filterbank files
-
-function getfbheader(fbname)
-    try
-        fbh = open(io->read(io, Filterbank.Header), fbname)
-        # Compute nfpc for Green Bank files as Int32 to match FBH5's nfpc type
-        fbh[:nfpc] = round(Int32, 187.5/64/abs(fbh[:foff]))
-        # Delete redundant fields to match FBH5 headers
-        delete!(fbh, :header_size)
-        delete!(fbh, :sample_size)
-        # Add hostname and filename fields
-        fbh[:hostname] = gethostname()
-        fbh[:filename] = abspath(fbname)
-        fbh
-    catch
-        (; hostname=gethostname(), filename=abspath(fbname))
-    end
-end
-
-function handle_fbfiles()
-    dirname = query(:dir, nothing)
-    dirname === nothing && error500("required parameter (dir) is missing")
-    validate_dir(dirname)
-    pattern = Regex(query(:regex, "\\.(fil|h5)\$"))
-
-    mapreduce(vcat, walkdir(dirname)) do (dir, _, files)
-        matches = filter(s->occursin(pattern, s), files)
-        getfbheader.(joinpath.(dir, matches))
-    end |> json
 end
 
 function handle_fbdata()
@@ -183,19 +165,14 @@ function handle_fbdata()
     ifs   = query(:ifs,   ":") |> parse_int_range
     times = query(:times, ":") |> parse_int_range
 
-    idxs = (chans, ifs, times)
-    if all(==(Colon()), idxs)
-        idxs=()
-    end
+    idxs = all(==(Colon()), idxs) ?  idxs=() : (chans, ifs, times)
+    data = get_data(fname, idxs)
 
-    _, fbd = Filterbank.mmap(fbname)
-    data = copy(fbd[idxs...])
-    finalize(fbd)
-
-    p = Ptr{UInt8}(pointer(data))
     hdrs = Dict(
         "content-type" => "application/octet-stream",
         "X-dims" => join(size(data), ",")
     )
+
+    p = Ptr{UInt8}(pointer(data))
     GC.@preserve data HTTP.Messages.Response(200, hdrs, unsafe_wrap(Array, p, (sizeof(data),)))
 end
