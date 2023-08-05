@@ -83,7 +83,7 @@ function get_h5header(fname)
             push!(pairs, :nsamps => size(data, ndims(data)))
             sort(pairs, by=first)
             push!(pairs, :hostname => gethostname())
-            push!(pairs, :filename => abspath(fbh5name))
+            push!(pairs, :filename => abspath(fname))
             NamedTuple(pairs)
         end
     catch
