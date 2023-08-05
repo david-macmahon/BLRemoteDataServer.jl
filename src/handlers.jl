@@ -77,7 +77,7 @@ function get_h5header(fname)
             elsize = sizeof(eltype(data))
             if !haskey(attrs, "nfpc")
                 # Compute nfpc for Green Bank files as Int32 to match FBH5's nfpc type
-                push!(pairs, round(Int32, 187.5/64/abs(fbh[:foff])))
+                push!(pairs, round(Int32, 187.5/64/abs(attrs["foff"][])))
             end
             push!(pairs, :data_size => elsize * prod(size(data)))
             push!(pairs, :nsamps => size(data, ndims(data)))
