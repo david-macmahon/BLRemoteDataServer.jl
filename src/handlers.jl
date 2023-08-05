@@ -2,16 +2,37 @@ function handle_prefixes()
     json(PREFIXES)
 end
 
-function validate_path(path)
+function error500(message)
+    throw(Genie.Exceptions.InternalServerException(message))
+end
+
+function validate_path(path, must_exist=true)
     if !any(p->startswith(path, p), PREFIXES)
-        error("$path does not start with supported prefix")
+        error500("$path does not start with supported prefix")
+    end
+    if must_exist && !ispath(path)
+        throw(Genie.Exceptions.NotFoundException(path))
+    end
+end
+
+function validate_dir(dir, must_exist=true)
+    validate_path(dir, must_exist)
+    if must_exist && !isdir(dir)
+        error500("$dir is not a dir")
+    end
+end
+
+function validate_file(fname, must_exist=true)
+    validate_path(fname, must_exist)
+    if must_exist && !isfile(fname)
+        error500("$fname is not a file")
     end
 end
 
 function handle_readdir()
     dirname = query(:dir, nothing)
-    dirname === nothing && error("required parameter (dir) is missing")
-    validate_path(dirname)
+    dirname === nothing && error500("required parameter (dir) is missing")
+    validate_dir(dirname)
     pattern = Regex(query(:regex, "."))
     dojoin = query(:join, "true") == "true"
 
@@ -21,8 +42,8 @@ end
 
 function handle_finddirs()
     dirname = query(:dir, nothing)
-    dirname === nothing && error("required parameter (dir) is missing")
-    validate_path(dirname)
+    dirname === nothing && error500("required parameter (dir) is missing")
+    validate_dir(dirname)
     pattern = Regex(query(:regex, "."))
     dojoin = query(:join, "true") == "true"
 
@@ -34,8 +55,8 @@ end
 
 function handle_findfiles()
     dirname = query(:dir, nothing)
-    dirname === nothing && error("required parameter (dir) is missing")
-    validate_path(dirname)
+    dirname === nothing && error500("required parameter (dir) is missing")
+    validate_dir(dirname)
     pattern = Regex(query(:regex, "."))
     dojoin = query(:join, "true") == "true"
 
@@ -144,9 +165,9 @@ end
 
 function handle_fbfiles()
     dirname = query(:dir, nothing)
-    dirname === nothing && error("required parameter (dir) is missing")
-    validate_path(dirname)
-    pattern = Regex(query(:regex, "\\.fil\$"))
+    dirname === nothing && error500("required parameter (dir) is missing")
+    validate_dir(dirname)
+    pattern = Regex(query(:regex, "\\.(fil|h5)\$"))
 
     mapreduce(vcat, walkdir(dirname)) do (dir, _, files)
         matches = filter(s->occursin(pattern, s), files)
@@ -155,9 +176,9 @@ function handle_fbfiles()
 end
 
 function handle_fbdata()
-    fbname = query(:file, nothing)
-    fbname === nothing && error("required parameter (file) is missing")
-    validate_path(fbname)
+    fname = query(:file, nothing)
+    fname === nothing && error500("required parameter (file) is missing")
+    validate_file(fname)
     chans = query(:chans, ":") |> parse_int_range
     ifs   = query(:ifs,   ":") |> parse_int_range
     times = query(:times, ":") |> parse_int_range
