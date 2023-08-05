@@ -1,4 +1,14 @@
 @swagger """
+/version:
+  get:
+    description: Returns the version of the BLRemoteDataServer.
+    responses:
+      "200":
+        description: OK
+"""
+route(handle_version, "/version")
+
+@swagger """
 /prefixes:
   get:
     description: Returns the list of directories being served.

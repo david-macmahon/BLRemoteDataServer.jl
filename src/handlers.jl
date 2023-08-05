@@ -1,3 +1,7 @@
+function handle_version()
+    json(VERSION)
+end
+
 function handle_prefixes()
     json(PREFIXES)
 end
