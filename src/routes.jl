@@ -157,7 +157,15 @@ route(handle_fbfiles, "/fbfiles")
           The channel(s) to read (1-based).  Either an integer, a range or a
           colon (`:`) which means all channels.  Defaults to `:`.
         schema:
-          type: string
+          type: integer
+      - name: fqav
+        in: query
+        required: false
+        description: >
+          Specifies the number of adjacent frequency channels to average
+          together.  Defaults to 1 (i.e. no frequency averaging).
+        schema:
+          type: integer
       - name: ifs
         in: query
         required: false
@@ -165,7 +173,7 @@ route(handle_fbfiles, "/fbfiles")
           The IF(s) to read (1-based).  Either an integer, a range or a
           colon (`:`) which means all IFs.  Defaults to `:`.
         schema:
-          type: string
+          type: integer
       - name: times
         in: query
         required: false
@@ -173,7 +181,15 @@ route(handle_fbfiles, "/fbfiles")
           The time sample(s) to read (1-based).  Either an integer, a range or a
           colon (`:`) which means all time samples.  Defaults to `:`.
         schema:
-          type: string
+          type: integer
+      - name: tmav
+        in: query
+        required: false
+        description: >
+          Specifies the number of adjacent time samples to average
+          together.  Defaults to 1 (i.e. no time averaging).
+        schema:
+          type: integer
     responses:
       "200":
         description: OK

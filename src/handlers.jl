@@ -145,32 +145,58 @@ function get_data(fname, idxs)
     HDF5.ishdf5(fname) ? get_h5data(fname, idxs) : get_fbdata(fname, idxs)
 end
 
-function parse_int_range(s::AbstractString)
+function parse_int_range(s::AbstractString, av::Integer=1)
     s == ":" && return Colon()
     s == "Colon()" && return Colon()
 
+    # Ignore invalid averaging
+    (av < 1) && (av = 1)
+
     parts = parse.(Int, split(s, ":"))
     if length(parts) == 1
-        return parts[1]:parts[1]
+        start = parts[1]
+        step = 1
+        len = 1
     elseif length(parts) == 2
-        return parts[1]:parts[2]
+        start = parts[1]
+        step = 1
+        len = parts[2] - parts[1] + 1
+        len = av * fld(len, av)
     elseif length(parts) == 3
-        return parts[1]:parts[2]:parts[3]
+        start = parts[1]
+        step = parts[2]
+        len = fld(parts[3] - start + 1, step)
+        len = av * fld(len, av)
     else
         error500("invalid range syntax ($s)")
     end
+    if start < 1 || step < 1 || len < 1
+        error500("invalid range ($s with averaging by $av)")
+    end
+
+    range(start; step, length=len)
 end
 
 function handle_fbdata()
     fname = query(:file, nothing)
     fname === nothing && error500("required parameter (file) is missing")
     validate_file(fname)
-    chans = query(:chans, ":") |> parse_int_range
-    ifs   = query(:ifs,   ":") |> parse_int_range
-    times = query(:times, ":") |> parse_int_range
+
+    fqav  = query(:fqav,  "1") |> s->something(tryparse(Int, s), 1)
+    tmav  = query(:tmav,  "1") |> s->something(tryparse(Int, s), 1)
+    (fqav < 1) && (fqav = 1)
+    (tmav < 1) && (tmav = 1)
+
+    chans = query(:chans, ":") |> s->parse_int_range(s, fqav)
+    ifs   = query(:ifs,   ":") |>    parse_int_range
+    times = query(:times, ":") |> s->parse_int_range(s, tmav)
 
     idxs = all(==(Colon()), (chans, ifs, times)) ?  () : (chans, ifs, times)
     data = get_data(fname, idxs)
+
+    nc, ni, nt = size(data)
+    data = mean(reshape(data, fqav, nc÷fqav, ni, tmav, nt÷tmav), dims=(1,4))
+    data = dropdims(data, dims=(1,4))
 
     hdrs = Dict(
         "content-type" => "application/octet-stream",
