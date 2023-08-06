@@ -136,7 +136,7 @@ end
 
 function get_fbdata(fname, idxs)
     _, fbd = Filterbank.mmap(fname)
-    data = copy(fbd[idxs...])
+    data = copy(isempty(idxs) ? fbd : @view fbd[idxs...])
     finalize(fbd) # force un-mmap
     data
 end
