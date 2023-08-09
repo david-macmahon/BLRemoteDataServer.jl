@@ -203,6 +203,5 @@ function handle_fbdata()
         "X-dims" => join(size(data), ",")
     )
 
-    p = Ptr{UInt8}(pointer(data))
-    GC.@preserve data HTTP.Messages.Response(200, hdrs, unsafe_wrap(Array, p, (sizeof(data),)))
+    HTTP.Messages.Response(200, hdrs, data)
 end
