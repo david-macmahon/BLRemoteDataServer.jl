@@ -1,7 +1,7 @@
 name = "BLRemoteDataServer"
 uuid = "ff10e4b9-378f-4bad-8d64-19def9d79a0d"
 authors = ["David MacMahon <davidm@astro.berkeley.edu>"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 Blio = "87855aa7-8b24-49b4-b316-97c011f78d17"
