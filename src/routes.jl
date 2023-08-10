@@ -198,6 +198,73 @@ route(handle_fbfiles, "/fbfiles")
 """
 route(handle_fbdata, "/fbdata")
 
+@swagger """
+/hitsfiles:
+  get:
+    description: >
+      Find CapnProto *Hits* files in/under the given directory `dir` and return
+      JSON dictionary of their metadata with added `hostname` and `filename`
+      fields.  The data field will be included (base64 encoded) if `withdata` is
+      `true` (default is `false`).
+    parameters:
+      - name: dir
+        in: query
+        required: true
+        description: "Specifies directory to search in/under."
+        schema:
+          type: string
+      - name: regex
+        in: query
+        required: false
+        description: >
+          Only files matching `regex` will be returned.  The default is to match
+          all files ending in `.hits` (i.e. `regex="\\\\.hits\\\$"`).
+        schema:
+          type: string
+      - name: withdata
+        in: query
+        required: false
+        description: >
+          Base64-encoded data field will be included when `withdata` is `true`
+          (default is `false`).
+        schema:
+          type: boolean
+    responses:
+      "200":
+        description: OK
+      "500":
+        description: Internal server error
+"""
+route(handle_hitsfiles, "/hitsfiles")
+
+@swagger """
+/hitdata:
+  get:
+    description: >
+      Get the Filterbank swatch associated with the CapnProto *Hit* at the
+      specified `offset` of the specified `file`.
+    parameters:
+      - name: file
+        in: query
+        required: true
+        description: "Specifies the CapnProto *Hits* file to read."
+        schema:
+          type: string
+      - name: offset
+        in: query
+        required: true
+        description: >
+          The offset of the Hit within `file` whose data will be returned.
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: OK
+      "500":
+        description: Internal server error
+"""
+route(handle_hitdata, "/hitdata")
+
 build_swagger()
 
 #add route without default layout

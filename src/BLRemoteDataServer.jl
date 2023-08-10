@@ -7,6 +7,8 @@ using HTTP
 
 using Blio
 using HDF5, H5Zbitshuffle
+using SeticoreCapnp
+using Base64
 using Statistics
 
 include("version.jl")

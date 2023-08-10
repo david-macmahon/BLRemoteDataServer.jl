@@ -205,3 +205,49 @@ function handle_fbdata()
 
     HTTP.Messages.Response(200, hdrs, data)
 end
+
+### CapnProto Hits files
+
+function handle_hitsfiles()
+    dirname = query(:dir, nothing)
+    dirname === nothing && error500("required parameter (dir) is missing")
+    validate_dir(dirname)
+    pattern = Regex(query(:regex, "\\.hits\$"))
+    withdata = query(:withdata, "false") == "true"
+    hostname = gethostname()
+
+    mapreduce(vcat, walkdir(dirname)) do (dir, _, files)
+        matches = filter(s->occursin(pattern, s), files)
+        mapreduce(vcat, matches) do f
+            p = joinpath(dir, f)
+            meta, data = load_hits(p)
+            if withdata
+                for (m,d) in zip(meta, data)
+                    m[:data] = base64encode(d)
+                end
+            end
+            setindex!.(meta, hostname, :hostname)
+            setindex!.(meta, p, :filename)
+        end
+    end |> json
+end
+
+function handle_hitdata()
+    fname = query(:file, nothing)
+    fname === nothing && error500("required parameter (file) is missing")
+    validate_file(fname)
+
+    s = query(:offset, nothing)
+    s === nothing && error500("required parameter (offset) is missing")
+    offset = tryparse(Int, s)
+    offset === nothing && error500("could not parse offset '$(s)' as integer")
+
+    _, data = load_hit(fname, offset)
+
+    hdrs = Dict(
+        "content-type" => "application/octet-stream",
+        "X-dims" => join(size(data), ",")
+    )
+
+    HTTP.Messages.Response(200, hdrs, data)
+end
