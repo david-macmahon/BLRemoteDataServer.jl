@@ -51,7 +51,7 @@ function handle_finddirs()
     pattern = Regex(query(:regex, "."))
     dojoin = query(:join, "true") == "true"
 
-    mapreduce(vcat, walkdir(dirname)) do (dir, subdirs, _)
+    mapreduce(vcat, walkdir(dirname); init=[]) do (dir, subdirs, _)
         matches = filter(s->occursin(pattern, s), subdirs)
         dojoin ? joinpath.(dir, matches) : matches
     end |> json
@@ -64,7 +64,7 @@ function handle_findfiles()
     pattern = Regex(query(:regex, "."))
     dojoin = query(:join, "true") == "true"
 
-    mapreduce(vcat, walkdir(dirname)) do (dir, _, files)
+    mapreduce(vcat, walkdir(dirname); init=[]) do (dir, _, files)
         matches = filter(s->occursin(pattern, s), files)
         dojoin ? joinpath.(dir, matches) : matches
     end |> json
@@ -122,7 +122,7 @@ function handle_fbfiles()
     validate_dir(dirname)
     pattern = Regex(query(:regex, "\\.(fil|h5)\$"))
 
-    mapreduce(vcat, walkdir(dirname)) do (dir, _, files)
+    mapreduce(vcat, walkdir(dirname); init=[]) do (dir, _, files)
         matches = filter(s->occursin(pattern, s), files)
         get_header.(joinpath.(dir, matches))
     end |> json
@@ -216,9 +216,9 @@ function handle_hitsfiles()
     withdata = query(:withdata, "false") == "true"
     hostname = gethostname()
 
-    mapreduce(vcat, walkdir(dirname)) do (dir, _, files)
+    mapreduce(vcat, walkdir(dirname); init=[]) do (dir, _, files)
         matches = filter(s->occursin(pattern, s), files)
-        mapreduce(vcat, matches) do f
+        mapreduce(vcat, matches; init=[]) do f
             p = joinpath(dir, f)
             meta, data = load_hits(p)
             if withdata
