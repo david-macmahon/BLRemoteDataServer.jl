@@ -251,3 +251,43 @@ function handle_hitdata()
 
     HTTP.Messages.Response(200, hdrs, data)
 end
+
+### CapnProto Stamps files
+
+function handle_stampsfiles()
+    dirname = query(:dir, nothing)
+    dirname === nothing && error500("required parameter (dir) is missing")
+    validate_dir(dirname)
+    pattern = Regex(query(:regex, "\\.stamps\$"))
+    hostname = gethostname()
+
+    mapreduce(vcat, walkdir(dirname); init=[]) do (dir, _, files)
+        matches = filter(s->occursin(pattern, s), files)
+        mapreduce(vcat, matches; init=[]) do f
+            p = joinpath(dir, f)
+            meta, _ = load_stamps(p)
+            setindex!.(meta, hostname, :hostname)
+            setindex!.(meta, p, :filename)
+        end
+    end |> json
+end
+
+function handle_stampdata()
+    fname = query(:file, nothing)
+    fname === nothing && error500("required parameter (file) is missing")
+    validate_file(fname)
+
+    s = query(:offset, nothing)
+    s === nothing && error500("required parameter (offset) is missing")
+    offset = tryparse(Int, s)
+    offset === nothing && error500("could not parse offset '$(s)' as integer")
+
+    _, data = load_stamp(fname, offset)
+
+    hdrs = Dict(
+        "content-type" => "application/octet-stream",
+        "X-dims" => join(size(data), ",")
+    )
+
+    HTTP.Messages.Response(200, hdrs, data)
+end

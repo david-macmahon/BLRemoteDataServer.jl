@@ -265,6 +265,65 @@ route(handle_hitsfiles, "/hitsfiles")
 """
 route(handle_hitdata, "/hitdata")
 
+@swagger """
+/stampsfiles:
+  get:
+    description: >
+      Find CapnProto *Stamps* files in/under the given directory `dir` and
+      return JSON dictionaries of their metadata with added `hostname` and
+      `filename` fields.
+    parameters:
+      - name: dir
+        in: query
+        required: true
+        description: "Specifies directory to search in/under."
+        schema:
+          type: string
+      - name: regex
+        in: query
+        required: false
+        description: >
+          Only files matching `regex` will be returned.  The default is to match
+          all files ending in `.hits` (i.e. `regex="\\\\.stamps\\\$"`).
+        schema:
+          type: string
+    responses:
+      "200":
+        description: OK
+      "500":
+        description: Internal server error
+"""
+route(handle_stampsfiles, "/stampsfiles")
+
+@swagger """
+/stampdata:
+  get:
+    description: >
+      Get the data associated with the CapnProto *Stamp* at the specified
+      `offset` of the specified `file`.  The returned 4D Array is indexed as
+      `[antenna, polarization, channel, time]`.
+    parameters:
+      - name: file
+        in: query
+        required: true
+        description: "Specifies the CapnProto *Stamps* file to read."
+        schema:
+          type: string
+      - name: offset
+        in: query
+        required: true
+        description: >
+          The offset of the Stamp within `file` whose data will be returned.
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: OK
+      "500":
+        description: Internal server error
+"""
+route(handle_stampdata, "/stampdata")
+
 build_swagger()
 
 #add route without default layout
