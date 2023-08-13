@@ -213,6 +213,7 @@ function handle_hitsfiles()
     dirname === nothing && error500("required parameter (dir) is missing")
     validate_dir(dirname)
     pattern = Regex(query(:regex, "\\.hits\$"))
+    unique = query(:unique, "true") == "true"
     withdata = query(:withdata, "false") == "true"
     hostname = gethostname()
 
@@ -220,7 +221,7 @@ function handle_hitsfiles()
         matches = filter(s->occursin(pattern, s), files)
         mapreduce(vcat, matches; init=[]) do f
             p = joinpath(dir, f)
-            meta, data = load_hits(p)
+            meta, data = load_hits(p; unique)
             if withdata
                 for (m,d) in zip(meta, data)
                     m[:data] = base64encode(d)

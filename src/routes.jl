@@ -221,6 +221,15 @@ route(handle_fbdata, "/fbdata")
           all files ending in `.hits` (i.e. `regex="\\\\.hits\\\$"`).
         schema:
           type: string
+      - name: unique
+        in: query
+        required: false
+        description: >
+          Only return unique hits from within each file when `unique` is `true`
+          (the default).  Duplicates that originate from different files will
+          always be returned.
+        schema:
+          type: boolean
       - name: withdata
         in: query
         required: false
