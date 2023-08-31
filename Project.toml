@@ -1,7 +1,7 @@
 name = "BLRemoteDataServer"
 uuid = "ff10e4b9-378f-4bad-8d64-19def9d79a0d"
 authors = ["David MacMahon <davidm@astro.berkeley.edu>"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
