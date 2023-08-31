@@ -43,8 +43,8 @@ number, pass it as the value of the `port` keyword argument (e.g. `port=12345`).
 
 ## Using the server
 
-The server self-hosts documentation for the RESTful and provides a web interface
-for invoking requests to the supported API endpoints.  To access the
+The server self-hosts documentation for the RESTful API and provides a web
+interface for invoking requests to the supported API endpoints.  To access the
 documentation and the web interface, point your browser to `http://host:port/`.
 
 The BLRemoteDataClient package provides more streamlined access from Julia.  See

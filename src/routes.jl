@@ -144,10 +144,10 @@ route(handle_fbfiles, "/fbfiles")
     description: >
       Return data from specified *Filterbank* file.
     parameters:
-      - name: file
+      - name: filename
         in: query
         required: true
-        description: Specifies the filterbank file to read.
+        description: Specifies the name of the filterbank file to read.
         schema:
           type: string
       - name: chans
@@ -221,15 +221,6 @@ route(handle_fbdata, "/fbdata")
           all files ending in `.hits` (i.e. `regex="\\\\.hits\\\$"`).
         schema:
           type: string
-      - name: unique
-        in: query
-        required: false
-        description: >
-          Only return unique hits from within each file when `unique` is `true`
-          (the default).  Duplicates that originate from different files will
-          always be returned.
-        schema:
-          type: boolean
       - name: withdata
         in: query
         required: false
@@ -253,17 +244,18 @@ route(handle_hitsfiles, "/hitsfiles")
       Get the Filterbank swatch associated with the CapnProto *Hit* at the
       specified `offset` of the specified `file`.
     parameters:
-      - name: file
+      - name: filename
         in: query
         required: true
         description: "Specifies the CapnProto *Hits* file to read."
         schema:
           type: string
-      - name: offset
+      - name: fileindex
         in: query
         required: true
         description: >
-          The offset of the Hit within `file` whose data will be returned.
+          The 1-based word index in `filename` of the Hit whose data will be
+          returned.
         schema:
           type: integer
     responses:
@@ -312,17 +304,18 @@ route(handle_stampsfiles, "/stampsfiles")
       `offset` of the specified `file`.  The returned 4D Array is indexed as
       `[antenna, polarization, channel, time]`.
     parameters:
-      - name: file
+      - name: filename
         in: query
         required: true
         description: "Specifies the CapnProto *Stamps* file to read."
         schema:
           type: string
-      - name: offset
+      - name: fileindex
         in: query
         required: true
         description: >
-          The offset of the Stamp within `file` whose data will be returned.
+          The 1-based word index of the Stamp within `file` whose data will be
+          returned.
         schema:
           type: integer
     responses:

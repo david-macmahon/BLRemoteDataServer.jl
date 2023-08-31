@@ -178,7 +178,7 @@ function parse_int_range(s::AbstractString, av::Integer=1)
 end
 
 function handle_fbdata()
-    fname = query(:file, nothing)
+    fname = query(:filename, nothing)
     fname === nothing && error500("required parameter (file) is missing")
     validate_file(fname)
 
@@ -213,7 +213,6 @@ function handle_hitsfiles()
     dirname === nothing && error500("required parameter (dir) is missing")
     validate_dir(dirname)
     pattern = Regex(query(:regex, "\\.hits\$"))
-    unique = query(:unique, "true") == "true"
     withdata = query(:withdata, "false") == "true"
     hostname = gethostname()
 
@@ -221,29 +220,46 @@ function handle_hitsfiles()
         matches = filter(s->occursin(pattern, s), files)
         mapreduce(vcat, matches; init=[]) do f
             p = joinpath(dir, f)
-            meta, data = load_hits(p; unique)
-            if withdata
-                for (m,d) in zip(meta, data)
-                    m[:data] = base64encode(d)
-                end
+            # Create a uniquified "Hit" reader for `p` using `index_factory`
+            seen = Set{NamedTuple}()
+            factory = withdata ? SeticoreCapnp.index_factory :
+                                 SeticoreCapnp.nodata_index_factory
+            reader = Iterators.filter(CapnpReader(factory, Hit, p)) do (h,i)
+                !(Base.in!(NamedTuple(h), seen))
             end
-            setindex!.(meta, hostname, :hostname)
-            setindex!.(meta, p, :filename)
+            # Map unique hits to a Vector{NamedTuple}, depending on `withdata`
+            if withdata
+                hits = map(reader) do (h,i)
+                    # HitDataIndexGlobalNamedTuple
+                    NamedTuple(h, base64encode(h.filterbank.data), i, hostname, p)
+                end::Vector{HitDataIndexGlobalNamedTuple}
+            else
+                hits = map(reader) do (h,i)
+                    # HitIndexGlobalNamedTuple
+                    NamedTuple(h, i, hostname, p)
+                end::Vector{HitIndexGlobalNamedTuple}
+            end
+            finalize(reader)
+            hits
         end
     end |> json
 end
 
 function handle_hitdata()
-    fname = query(:file, nothing)
+    fname = query(:filename, nothing)
     fname === nothing && error500("required parameter (file) is missing")
     validate_file(fname)
 
-    s = query(:offset, nothing)
-    s === nothing && error500("required parameter (offset) is missing")
-    offset = tryparse(Int, s)
-    offset === nothing && error500("could not parse offset '$(s)' as integer")
+    s = query(:fileindex, nothing)
+    s === nothing && error500("required parameter (fileindex) is missing")
+    fileindex = tryparse(Int, s)
+    fileindex === nothing && error500("could not parse fileindex '$(s)' as integer")
 
-    _, data = load_hit(fname, offset)
+    reader = CapnpReader(fname)
+    hit = Hit(reader, fileindex)
+    finalize(reader)
+
+    data = hit.filterbank.data
 
     hdrs = Dict(
         "content-type" => "application/octet-stream",
@@ -266,24 +282,32 @@ function handle_stampsfiles()
         matches = filter(s->occursin(pattern, s), files)
         mapreduce(vcat, matches; init=[]) do f
             p = joinpath(dir, f)
-            meta, _ = load_stamps(p)
-            setindex!.(meta, hostname, :hostname)
-            setindex!.(meta, p, :filename)
+            reader = CapnpReader(SeticoreCapnp.nodata_index_factory, Stamp, p)
+            stamps = map(reader) do (s,i)
+                # StampIndexGlobalNamedTuple
+                NamedTuple(s, i, hostname, p)
+            end::Vector{StampIndexGlobalNamedTuple}
+            finalize(reader)
+            stamps
         end
     end |> json
 end
 
 function handle_stampdata()
-    fname = query(:file, nothing)
-    fname === nothing && error500("required parameter (file) is missing")
+    fname = query(:filename, nothing)
+    fname === nothing && error500("required parameter (filename) is missing")
     validate_file(fname)
 
-    s = query(:offset, nothing)
-    s === nothing && error500("required parameter (offset) is missing")
-    offset = tryparse(Int, s)
-    offset === nothing && error500("could not parse offset '$(s)' as integer")
+    s = query(:fileindex, nothing)
+    s === nothing && error500("required parameter (fileindex) is missing")
+    fileindex = tryparse(Int, s)
+    fileindex === nothing && error500("could not parse fileindex '$(s)' as integer")
 
-    _, data = load_stamp(fname, offset)
+    reader = CapnpReader(fname)
+    stamp = Stamp(reader, fileindex)
+    finalize(reader)
+
+    data = stamp.data
 
     hdrs = Dict(
         "content-type" => "application/octet-stream",
